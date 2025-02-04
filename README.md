@@ -115,8 +115,6 @@ Check I2C address with i2c_scanner example
 
 Ensure SEL pin is grounded for I2C mode
 
-Inconsistent Readings
->>>>>>> 59a4d4c815cd4e1aa9afd4880ec63367061787df
 
 > **Note:** This example is primarily tested on **ESP32**. Other targets may require hardware configuration adjustments.
 
