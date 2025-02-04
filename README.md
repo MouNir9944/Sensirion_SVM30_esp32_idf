@@ -22,7 +22,7 @@ Features
 
 Initialization of SVM30 sensor
 
-Periodic reading of VOC and NOx indices
+Periodic reading of VOC and CO2 indices
 
 Temperature and humidity measurement (if supported by hardware)
 
