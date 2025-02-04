@@ -1,35 +1,129 @@
+Sensirion SVM30 Air Quality Sensor Example for ESP-IDF
+This example demonstrates how to use the Sensirion SVM30 air quality sensor with Espressif ESP32 series chips using ESP-IDF. The SVM30 provides measurements of Volatile Organic Compounds (VOC), Nitrogen Oxides (NOx), and ambient temperature/humidity (if supported by hardware). This project initializes the sensor, reads data periodically, and outputs it via UART.
+
 | Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C6 | ESP32-H2 | ESP32-P4 | ESP32-S2 | ESP32-S3 |
 | ----------------- | ----- | -------- | -------- | -------- | -------- | -------- | -------- | -------- |
 
-# _Sample project_
+Note: This example is primarily tested on ESP32. Other targets may require hardware configuration adjustments.
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+Features
+Initialization of SVM30 sensor
 
-This is the simplest buildable example. The example is used by command `idf.py create-project`
-that copies the project to user specified path and set it's name. For more information follow the [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project)
+Periodic reading of VOC and NOx indices
 
+Temperature and humidity measurement (if supported by hardware)
 
+UART-based output for easy monitoring
 
-## How to use example
-We encourage the users to use the example as a template for the new projects.
-A recommended way is to follow the instructions on a [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project).
+Hardware Requirements
+ESP32 development board (e.g., ESP32-WROOM-32)
 
-## Example folder contents
+Sensirion SVM30 sensor
 
-The project **sample_project** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
+Breadboard and jumper wires
 
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt`
-files that provide set of directives and instructions describing the project's source files and targets
-(executable, library, or both). 
+USB cable for power and programming
 
-Below is short explanation of remaining files in the project folder.
+Wiring Guide
+SVM30 Pin	ESP32 Pin	Description
+VCC	3.3V	Power supply (3.3V)
+GND	GND	Ground
+SDA	GPIO21	I2C Data
+SCL	GPIO22	I2C Clock
+SEL	GND	I2C mode selection (0V)
+Note: Ensure the SEL pin is connected to GND to enable I2C communication.
 
-```
-├── CMakeLists.txt
-├── main
-│   ├── CMakeLists.txt
-│   └── main.c
-└── README.md                  This is the file you are currently reading
-```
-Additionally, the sample project contains Makefile and component.mk files, used for the legacy Make based build system. 
-They are not used or needed when building with CMake and idf.py.
+Getting Started
+Prerequisites
+ESP-IDF v4.4 or newer installed
+
+Basic understanding of ESP-IDF project structure
+
+Hardware setup as per wiring guide
+
+Installation
+Clone the Repository
+
+bash
+Copy
+git clone https://github.com/your-username/Sensirion_SVM30_esp32_idf.git
+cd Sensirion_SVM30_esp32_idf
+Set Target Chip (Replace esp32 with your target if different)
+
+bash
+Copy
+idf.py set-target esp32
+Configure Project (Optional)
+
+bash
+Copy
+idf.py menuconfig
+Adjust I2C pin configuration under Example Configuration if needed.
+
+Build and Flash
+
+bash
+Copy
+idf.py build flash monitor
+Observe Output
+After flashing, the ESP32 will initialize the sensor and start printing measurements:
+
+Copy
+I (324) example: SVM30 Initialized successfully
+I (334) example: VOC Index: 145, NOx Index: 23
+I (4334) example: VOC Index: 152, NOx Index: 25
+...
+Configuration Options
+I2C Settings
+Modify main/main.c to change default I2C settings:
+
+c
+Copy
+#define I2C_MASTER_SDA_IO         21      /* GPIO number for SDA */
+#define I2C_MASTER_SCL_IO         22      /* GPIO number for SCL */
+#define I2C_MASTER_FREQ_HZ        100000  /* I2C master clock frequency */
+Measurement Interval
+Adjust the sampling interval by changing SAMPLE_DELAY_MS in main/main.c:
+
+c
+Copy
+#define SAMPLE_DELAY_MS 4000  /* 4-second interval */
+Troubleshooting
+Sensor Not Detected
+
+Verify wiring connections
+
+Check I2C address with i2c_scanner example
+
+Ensure SEL pin is grounded for I2C mode
+
+Inconsistent Readings
+
+Allow 24-48 hours for sensor stabilization
+
+Ensure adequate ventilation around the sensor
+
+Avoid direct exposure to high-VOC sources
+
+I2C Errors
+
+Confirm pull-up resistors are present (4.7kΩ recommended)
+
+Reduce I2C clock speed if using long wires
+
+Contributing
+Contributions are welcome! Please open an issue or submit a pull request for any:
+
+Bug fixes
+
+Additional features
+
+Documentation improvements
+
+License
+This project is licensed under the MIT License - see LICENSE for details.
+
+Acknowledgements
+Sensirion AG for the SVM30 sensor
+
+Espressif Systems for the ESP-IDF framework
