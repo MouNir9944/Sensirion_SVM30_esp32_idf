@@ -1,0 +1,14 @@
+{
+    "C_Cpp.intelliSenseEngine": "default",
+    "idf.espIdfPathWin": "C:\\Users\\SINT190\\esp\\v5.3.2\\esp-idf",
+    "idf.openOcdConfigs": [
+        "board/esp32-wrover-kit-3.3v.cfg"
+    ],
+    "idf.toolsPathWin": "C:\\Users\\SINT190\\.espressif",
+    "idf.flashType": "UART",
+    "C_Cpp.errorSquiggles": "disabled",
+    "files.associations": {
+        "i2c_master.h": "c",
+        "task.h": "c"
+    }
+}

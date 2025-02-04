@@ -1,30 +1,35 @@
-# Sensirion_SVM30_esp32_idf
-Multi-gas, humidity and temperature module
+| Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C6 | ESP32-H2 | ESP32-P4 | ESP32-S2 | ESP32-S3 |
+| ----------------- | ----- | -------- | -------- | -------- | -------- | -------- | -------- | -------- |
 
-The SVM30 facilitates development and sensor design-in of products while at the same time offering great flexibility for product design. The SVM30 is especially suited for customers which prioritize lean development and products, and perfectly fitting for small and middle-sized companies. Based on Sensirion’s experience and expertise in environmental sensing, the SVM30 is optimized for easy design-in and sensing performance. The SVM30 is a multi-gas, humidity and temperature sensor combo module containing a SGP30 gas sensor as well as a SHTC1 humidity and temperature sensor.
+# _Sample project_
 
-The SGP30 gas sensor combines multiple metal-oxide sensing elements – the pixels – on one chip, thereby offering the possibility to measure a total VOC signal (tVOC) and a CO² equivalent signal (CO²eq) with one single sensor chip. The SVM30 further offers calibrated air quality output signals as well as compensation of humidity cross-sensitivity. The gas sensing element features an unmatched robustness against contamination by siloxanes present in real-world applications enabling unique long-term stability and low drift. Furthermore, the integrated SHTC1 humidity and temperature sensor covers a humidity measurement range of 0 to 100% relative humidity (RH) and a temperature measurement range of -20 to 85°C with a typical accuracy of ±5% RH and ±1°C. The gas, humidity and temperature sensor components are designed with Sensirion’s proven CMOSens® Technology.
+(See the README.md file in the upper level 'examples' directory for more information about examples.)
 
-Specification
-VOC
-Sensor output	Two digital 16-bit raw signals		
-Processed output	Total VOC in ppb, CO2-eq in ppm		
-Measurement range	0 - 1000	ppm	
-Measurement range (CO₂-eq)	0 - 1000	ppm	
-Device-to-device var. (CO₂-eq)	10 - 20	%	
-Device-to-device var.	15 - 25	%	
-Switch-on time	24	h	
-On-chip humidity compensation	Yes		
-Temperature
-Typ. temperature accuracy	0.1	°C	
-Humidity
-Typ. relative humidity accuracy	5	%RH	
-Operating relative humidity range	0 - 100	%RH	
-Response time (τ63%)	8	s	
-Generic
-Supply voltage	4.5 - 5.5	V	
-Average supply current	49000	uA	
-Operating temperature range [°C]	-20 - 85	°C	
-Interfaces	I²C		
-Size (LxWxH)	39 x 15 x 6.5	mm	
-Packaging size	80, 800	pcs (Tray)	
+This is the simplest buildable example. The example is used by command `idf.py create-project`
+that copies the project to user specified path and set it's name. For more information follow the [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project)
+
+
+
+## How to use example
+We encourage the users to use the example as a template for the new projects.
+A recommended way is to follow the instructions on a [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project).
+
+## Example folder contents
+
+The project **sample_project** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
+
+ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt`
+files that provide set of directives and instructions describing the project's source files and targets
+(executable, library, or both). 
+
+Below is short explanation of remaining files in the project folder.
+
+```
+├── CMakeLists.txt
+├── main
+│   ├── CMakeLists.txt
+│   └── main.c
+└── README.md                  This is the file you are currently reading
+```
+Additionally, the sample project contains Makefile and component.mk files, used for the legacy Make based build system. 
+They are not used or needed when building with CMake and idf.py.
