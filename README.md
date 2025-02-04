@@ -46,7 +46,7 @@ Clone the Repository
 
 bash
 Copy
-git clone https://github.com/your-username/Sensirion_SVM30_esp32_idf.git
+git clone https://github.com/MouNir9944/Sensirion_SVM30_esp32_idf.git
 cd Sensirion_SVM30_esp32_idf
 Set Target Chip (Replace esp32 with your target if different)
 
