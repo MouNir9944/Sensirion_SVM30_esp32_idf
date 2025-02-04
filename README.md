@@ -46,33 +46,28 @@ Installation
 Clone the Repository
 
 bash
-Copy
 git clone https://github.com/MouNir9944/Sensirion_SVM30_esp32_idf.git
 cd Sensirion_SVM30_esp32_idf
 Set Target Chip (Replace esp32 with your target if different)
 
 bash
-Copy
 idf.py set-target esp32
 Configure Project (Optional)
 
 bash
-Copy
 idf.py menuconfig
 Adjust I2C pin configuration under Example Configuration if needed.
 
 Build and Flash
 
 bash
-Copy
 idf.py build flash monitor
 Observe Output
 After flashing, the ESP32 will initialize the sensor and start printing measurements:
 
-Copy
 I (324) example: SVM30 Initialized successfully
-I (334) example: VOC Index: 145, NOx Index: 23
-I (4334) example: VOC Index: 152, NOx Index: 25
+I (334) example: VOC Index: 145 ppm, CO2_eq Index: 23 ppm
+I (4334) example: T Index: 152 °C, H Index: 25 %
 ...
 Configuration Options
 I2C Settings
