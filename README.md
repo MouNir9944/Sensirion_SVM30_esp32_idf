@@ -95,13 +95,13 @@ I2C Settings
 
 Modify main/main.c to change default I2C settings:
 
-c
+```c
 #define I2C_MASTER_SDA_IO         21      /* GPIO number for SDA */
 #define I2C_MASTER_SCL_IO         22      /* GPIO number for SCL */
 #define I2C_MASTER_FREQ_HZ        100000  /* I2C master clock frequency */
 Measurement Interval
 Adjust the sampling interval by changing SAMPLE_DELAY_MS in main/main.c:
-
+```
 c
 #define SAMPLE_DELAY_MS 4000  /* 4-second interval */
 
