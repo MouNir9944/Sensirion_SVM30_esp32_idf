@@ -124,7 +124,7 @@ Ensure SEL pin is grounded for I2C mode
 ## Features
 
 - **Initialization of SVM30 sensor**
-- **Periodic reading of VOC and NOx indices**
+- **Periodic reading of VOC and CO2 indices**
 - **Temperature and humidity measurement** (if supported by hardware)
 - **UART-based output** for easy monitoring
 
