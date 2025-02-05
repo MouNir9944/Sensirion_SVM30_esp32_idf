@@ -3,11 +3,16 @@
 #include "driver/i2c_master.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#define I2C_MASTER_SCL_IO 19
-#define I2C_MASTER_SDA_IO 18
+#include "esp_log.h"
+
+#define VERSION "1.2 / August 2020";
+#define I2C_MASTER_SCL_IO 22
+#define I2C_MASTER_SDA_IO 21
 #define TEST_I2C_PORT I2C_NUM_0
+const char * SVM30_VERSION = VERSION;
 static const uint8_t SHTC1_ADDRESS = 0x70;
 static const uint8_t SGP30_I2C_ADDRESS = 0x58;
+const uint8_t REST_I2C_ADDRESS=0x0;
 static const uint16_t SHTC3_CMD_WAKEUP = 0x3517;
 #define SENSIRION_COMMAND_SIZE 2
 #define SENSIRION_WORD_SIZE 2
@@ -36,9 +41,11 @@ static const uint16_t SHTC3_CMD_WAKEUP = 0x3517;
 #define SHTC1_MEASUREMENT_DURATION_USEC  14   //    14400== 14ms
 static uint16_t shtc1_cmd_measure = SHTC1_CMD_MEASURE_HPM;
 static const uint16_t SHTC1_CMD_DURATION_USEC = 1;// 1000us; == 1ms
-
-
-
+#define SGP30_Init_Air_Quality      0x2003
+#define RESET_CMD       0x0006
+#define SGP30_Read_ID               0x3682
+#define SHTC1_Read_ID                   0xEFC8
+#define SGP30_Get_Feature_Set       0x202F
 
 /************************ */
 #ifndef ARRAY_SIZE
@@ -78,9 +85,9 @@ static const uint32_t T_STEP = (T_HI - T_LO) / (ARRAY_SIZE(AH_LUT_100RH) - 1);
 
 
 
-i2c_master_dev_handle_t SHTC1_handle;
-i2c_master_dev_handle_t SPG30_handle;
-
+i2c_master_dev_handle_t scht1_handle;
+i2c_master_dev_handle_t svm30_handle;
+i2c_master_dev_handle_t rest_handle;
 
 void i2c_init(){
     i2c_master_bus_config_t i2c_mst_config = {
@@ -105,10 +112,15 @@ void i2c_init(){
         .device_address = SGP30_I2C_ADDRESS,
         .scl_speed_hz = 100000,
     };
+    i2c_device_config_t REST_cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = REST_I2C_ADDRESS,
+        .scl_speed_hz = 100000,
+    };
+    ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &dev_cfg_SHTC1, &scht1_handle));
+    ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &dev_cfg_spg30, &svm30_handle));
+    ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &REST_cfg, &rest_handle));
 
-    ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &dev_cfg_SHTC1, &SHTC1_handle));
-    ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &dev_cfg_spg30, &SPG30_handle));
-    
 }
 
 
@@ -132,6 +144,7 @@ uint8_t sensirion_common_generate_crc(const uint8_t* data, uint16_t count) {
 
 uint16_t sensirion_fill_cmd_send_buf(uint8_t* buf, uint16_t cmd,
                                      const uint16_t* args, uint8_t num_args) {
+
     uint8_t crc;
     uint8_t i;
     uint16_t idx = 0;
@@ -151,71 +164,73 @@ uint16_t sensirion_fill_cmd_send_buf(uint8_t* buf, uint16_t cmd,
 }
 
 
-esp_err_t sensirion_i2c_write_cmd(i2c_master_dev_handle_t *i2c_handler,uint16_t command) {
+esp_err_t sensirion_i2c_write_cmd(i2c_master_dev_handle_t i2c_handler,uint16_t command) {
     uint8_t buf[SENSIRION_COMMAND_SIZE];
 
     sensirion_fill_cmd_send_buf(buf, command, NULL, 0);
-    
-    return i2c_master_transmit(i2c_handler, buf, SENSIRION_COMMAND_SIZE,-1);
+
+    return i2c_master_transmit(i2c_handler, &buf, SENSIRION_COMMAND_SIZE,-1);
 }
 
-esp_err_t sensirion_i2c_write_cmd_with_args(i2c_master_dev_handle_t *i2c_handler, uint16_t command,
+esp_err_t sensirion_i2c_write_cmd_with_args(i2c_master_dev_handle_t i2c_handler, uint16_t command,
                                           const uint16_t* data_words,
                                           uint16_t num_words) {
     uint8_t buf[SENSIRION_MAX_BUFFER_WORDS];
     uint16_t buf_size;
 
     buf_size = sensirion_fill_cmd_send_buf(buf, command, data_words, num_words);
-     return i2c_master_transmit(i2c_handler, buf, buf_size,-1);
+     return i2c_master_transmit(i2c_handler, &buf, buf_size,-1);
 }
 
 
 
-esp_err_t sensirion_i2c_delayed_read_cmd(i2c_master_dev_handle_t *i2c_handler, uint16_t cmd,
+esp_err_t sensirion_i2c_delayed_read_cmd(i2c_master_dev_handle_t i2c_handler, uint16_t cmd,
                                        uint32_t delay_us, uint16_t* data_words,
                                        uint16_t num_words) {
     esp_err_t ret;
     uint8_t buf[SENSIRION_COMMAND_SIZE];
 
     sensirion_fill_cmd_send_buf(buf, cmd, NULL, 0);
-    ret = i2c_master_transmit(i2c_handler, buf, SENSIRION_COMMAND_SIZE,-1);
+    ret = i2c_master_transmit(i2c_handler, &buf, SENSIRION_COMMAND_SIZE,-1);
     if (ret != ESP_OK)
-        return ret;
+        {return ret;}
 
     if (delay_us)
-        vTaskDelay(pdMS_TO_TICKS(delay_us));
+       {vTaskDelay(pdMS_TO_TICKS(delay_us));} 
 
     return i2c_master_receive(i2c_handler, data_words, num_words,-1);
 }
 
 
 esp_err_t shtc1_wake_up(void) {
-    return sensirion_i2c_write_cmd(SHTC1_handle, SHTC3_CMD_WAKEUP);
+
+    return sensirion_i2c_write_cmd(scht1_handle, SHTC3_CMD_WAKEUP);
 }
 
 esp_err_t shtc1_read_serial(uint32_t* serial) {
     esp_err_t ret;
     const uint16_t tx_words[] = {0x007B};
     uint16_t serial_words[SENSIRION_NUM_WORDS(*serial)];
+  
 
-    ret = sensirion_i2c_write_cmd_with_args(SHTC1_handle, 0xC595, tx_words,
+    ret = sensirion_i2c_write_cmd_with_args(scht1_handle, 0xC595, tx_words,
                                             SENSIRION_NUM_WORDS(tx_words));
     if (ret)
-        return ret;
+      {return ret;}
 
     vTaskDelay(pdMS_TO_TICKS(SHTC1_CMD_DURATION_USEC));
 
-    ret = sensirion_i2c_delayed_read_cmd(SHTC1_handle, 0xC7F7, SHTC1_CMD_DURATION_USEC, &serial_words[0], 1);
+    ret = sensirion_i2c_delayed_read_cmd(scht1_handle, 0xC7F7, SHTC1_CMD_DURATION_USEC, &serial_words[0], 1);
     if (ret)
-        return ret;
+      {return ret;}
 
-    ret = sensirion_i2c_delayed_read_cmd(SHTC1_handle, 0xC7F7, SHTC1_CMD_DURATION_USEC, &serial_words[1], 1);
+    ret = sensirion_i2c_delayed_read_cmd(scht1_handle, 0xC7F7, SHTC1_CMD_DURATION_USEC, &serial_words[1], 1);
     if (ret)
-        return ret;
+      {return ret;}
 
     *serial = ((uint32_t)serial_words[0] << 16) | serial_words[1];
     printf("serial: %lu\n", (unsigned long)serial);
-    return ESP_FAIL;
+    return ESP_OK;
 }
 
 
@@ -233,7 +248,7 @@ esp_err_t svm_probe() {
 
     err = shtc1_probe();
     if (err != ESP_OK)
-        return err;
+        {return err;}
 
     return sgp30_probe();
 }
@@ -245,13 +260,13 @@ esp_err_t sgp30_get_feature_set_version(uint16_t* feature_set_version,
     esp_err_t ret;
     uint16_t words[SGP30_CMD_GET_FEATURESET_WORDS];
 
-    ret = sensirion_i2c_delayed_read_cmd(SPG30_handle,
+    ret = sensirion_i2c_delayed_read_cmd(svm30_handle,
                                          SGP30_CMD_GET_FEATURESET,
                                          SGP30_CMD_GET_FEATURESET_DURATION_US,
                                          words, SGP30_CMD_GET_FEATURESET_WORDS);
 
     if (ret != ESP_OK)
-        return ret;
+        {return ret;}
 
     *feature_set_version = words[0] & 0x00FF;
     *product_type = (uint8_t)((words[0] & 0xF000) >> 12);
@@ -267,21 +282,20 @@ static int16_t sgp30_check_featureset(uint16_t needed_fs) {
 
     ret = sgp30_get_feature_set_version(&fs_version, &product_type);
     if (ret != ESP_OK)
-        return ret;
+    { return ret;}
 
     if (product_type != SGP30_PRODUCT_TYPE)
-        return SGP30_ERR_INVALID_PRODUCT_TYPE;
+       { return SGP30_ERR_INVALID_PRODUCT_TYPE;}
 
     if (fs_version < needed_fs)
-        return SGP30_ERR_UNSUPPORTED_FEATURE_SET;
+        {return SGP30_ERR_UNSUPPORTED_FEATURE_SET;}
 
     return ESP_OK;
 }
 
 esp_err_t sgp30_iaq_init() {
-    esp_err_t ret =
-    sensirion_i2c_write_cmd(SPG30_handle, SGP30_CMD_IAQ_INIT);
-      vTaskDelay(pdMS_TO_TICKS(SGP30_CMD_IAQ_INIT_DURATION_US));
+    esp_err_t ret =sensirion_i2c_write_cmd(svm30_handle, SGP30_CMD_IAQ_INIT);
+    vTaskDelay(pdMS_TO_TICKS(SGP30_CMD_IAQ_INIT_DURATION_US));
     return ret;
 }
 
@@ -289,7 +303,7 @@ esp_err_t sgp30_probe() {
     esp_err_t ret = sgp30_check_featureset(0x20);
 
     if (ret != ESP_OK)
-        return ret;
+       { return ret;}
 
     return sgp30_iaq_init();
 }
@@ -331,7 +345,7 @@ esp_err_t sensirion_i2c_read_words_as_bytes(i2c_master_dev_handle_t *i2c_handler
 }
 
 
-esp_err_t sensirion_i2c_read_words(i2c_master_dev_handle_t *i2c_handler, uint16_t* data_words,
+esp_err_t sensirion_i2c_read_words(i2c_master_dev_handle_t i2c_handler, uint16_t* data_words,
                                  uint16_t num_words) {
     esp_err_t ret;
     uint8_t i;
@@ -353,11 +367,11 @@ esp_err_t sensirion_i2c_read_words(i2c_master_dev_handle_t *i2c_handler, uint16_
 
 
 esp_err_t shtc1_measure(void) {
-    return sensirion_i2c_write_cmd(SHTC1_handle, shtc1_cmd_measure);
+    return sensirion_i2c_write_cmd(scht1_handle, shtc1_cmd_measure);
 }
 int16_t shtc1_read(int32_t* temperature, int32_t* humidity) {
     uint16_t words[2];
-    int16_t ret = sensirion_i2c_read_words(SHTC1_handle, words,
+    int16_t ret = sensirion_i2c_read_words(scht1_handle, words,
                                            SENSIRION_NUM_WORDS(words));
     /**
      * formulas for conversion of the sensor signals, optimized for fixed point
@@ -433,7 +447,7 @@ esp_err_t sgp30_set_absolute_humidity(uint32_t absolute_humidity) {
     /* ah_scaled = (absolute_humidity / 1000) * 256 */
     ah_scaled = (uint16_t)((absolute_humidity * 16777) >> 16);
 
-    ret = sensirion_i2c_write_cmd_with_args(SPG30_handle, SGP30_CMD_SET_ABSOLUTE_HUMIDITY, &ah_scaled,
+    ret = sensirion_i2c_write_cmd_with_args(svm30_handle, SGP30_CMD_SET_ABSOLUTE_HUMIDITY, &ah_scaled,
         SENSIRION_NUM_WORDS(ah_scaled));
 
     
@@ -461,7 +475,7 @@ esp_err_t sgp30_read_iaq(uint16_t* tvoc_ppb, uint16_t* co2_eq_ppm) {
     esp_err_t ret;
     uint16_t words[SGP30_CMD_IAQ_MEASURE_WORDS];
 
-    ret = sensirion_i2c_read_words(SPG30_handle, words,
+    ret = sensirion_i2c_read_words(svm30_handle, words,
                                    SGP30_CMD_IAQ_MEASURE_WORDS);
 
     *tvoc_ppb = words[1];
@@ -471,7 +485,7 @@ esp_err_t sgp30_read_iaq(uint16_t* tvoc_ppb, uint16_t* co2_eq_ppm) {
 }
 
 int16_t sgp30_measure_iaq() {
-    return sensirion_i2c_write_cmd(SPG30_handle, SGP30_CMD_IAQ_MEASURE);
+    return sensirion_i2c_write_cmd(svm30_handle, SGP30_CMD_IAQ_MEASURE);
 }
 esp_err_t sgp30_measure_iaq_blocking_read(uint16_t* tvoc_ppb,
                                         uint16_t* co2_eq_ppm) {
@@ -517,8 +531,7 @@ esp_err_t sgp30_get_iaq_baseline(uint32_t* baseline) {
     esp_err_t ret;
     uint16_t words[SGP30_CMD_GET_IAQ_BASELINE_WORDS];
 
-    ret =
-        sensirion_i2c_write_cmd(SPG30_handle, SGP30_CMD_GET_IAQ_BASELINE);
+    ret =sensirion_i2c_write_cmd(svm30_handle, SGP30_CMD_GET_IAQ_BASELINE);
 
     if (ret != ESP_OK)
         return ret;
@@ -526,7 +539,7 @@ esp_err_t sgp30_get_iaq_baseline(uint32_t* baseline) {
 
     vTaskDelay(pdTICKS_TO_MS(SGP30_CMD_GET_IAQ_BASELINE_DURATION_US));
 
-    ret = sensirion_i2c_read_words(SPG30_handle, words,
+    ret = sensirion_i2c_read_words(svm30_handle, words,
                                    SGP30_CMD_GET_IAQ_BASELINE_WORDS);
 
     if (ret != ESP_OK)
@@ -540,6 +553,95 @@ esp_err_t sgp30_get_iaq_baseline(uint32_t* baseline) {
 }
 
 
+/************************ */
+esp_err_t SVM30_transmit_receive(i2c_master_dev_handle_t i2c_handle, uint8_t *send_buff, size_t send_buff_len,uint8_t *recive_buff, size_t recive_data_len,uint8_t wait) {
+    // Logging the I2C address
+    #ifdef debug_svm30
+    if(i2c_handle == rest_handle) {
+        ESP_LOGI(TAG_SVM30, "I2C address 0x%02X :", REST_I2C_ADDRESS);
+    } else if(i2c_handle == svm30_handle) {
+        ESP_LOGI(TAG_SVM30, "I2C address 0x%02X :", SVM30_I2C_ADDRESS);
+    } else if(i2c_handle == scht1_handle) {
+        ESP_LOGI(TAG_SVM30, "I2C address 0x%02X :", SCHT1_I2C_ADDRESS);
+    }
+    // Log the transmitted data
+    ESP_LOG_BUFFER_HEX(TAG_SVM30, send_buff, send_buff_len);
+    #endif
+    // Perform I2C transmit/receive operation
+    esp_err_t err = i2c_master_transmit(i2c_handle, send_buff, send_buff_len,  2000);
+    if (err != ESP_OK) {
+        ESP_LOGE("TAG_SVM30", "I2C transmit failed: %s", esp_err_to_name(err));
+        return err;
+    }
+    vTaskDelay(pdMS_TO_TICKS(wait));
+
+    err = i2c_master_receive(i2c_handle, recive_buff, recive_data_len, 2000);
+    if (err != ESP_OK) {
+        ESP_LOGE("TAG_SVM30", "I2C receive failed: %s", esp_err_to_name(err));
+         return err;
+    } else {
+         #ifdef debug_svm30
+        ESP_LOGI(TAG_SVM30, "I2C receive success :");
+        ESP_LOG_BUFFER_HEX(TAG_SVM30, recive_buff, recive_data_len);
+        #endif
+
+    }
+    return err;
+}
+
+
+esp_err_t probe1() {
+    esp_err_t err=ESP_FAIL;
+      // SGP30 has 3 words, SHTC1 has 1 word
+        uint8_t send_buff[2] = {(SGP30_Read_ID >> 8) & 0xFF, SGP30_Read_ID & 0xFF};
+        uint8_t recive_buff[6]={0};
+        err=SVM30_transmit_receive(svm30_handle, &send_buff,sizeof(send_buff),&recive_buff,6,15);
+        if (err != ESP_OK) {
+        #ifdef debug_svm30_Values
+        ESP_LOGE(TAG_SVM30, "SVM30 Error probe SVM30_transmit_receive");
+        #endif
+        }else{
+            char  id[15];
+            sprintf(id, "%02x%02x %02x%02x %02x%02x", recive_buff[0], recive_buff[1], recive_buff[2],recive_buff[3], recive_buff[4], recive_buff[5]);
+            ESP_LOGI("TAG_SVM30", "SGP30 id : %s",(char *)id);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        // SHTC1 has 1 word
+        uint8_t send_buff1[2] = {(SHTC1_Read_ID >> 8) & 0xFF, SHTC1_Read_ID & 0xFF};
+        uint8_t recive_buff1[2]={0};
+        err=SVM30_transmit_receive(scht1_handle, &send_buff1,sizeof(send_buff1),&recive_buff1,2,15);
+        if (err != ESP_OK) {
+        #ifdef debug_svm30_Values
+        ESP_LOGE("TAG_SVM30", "SVM30 Error probe SVM30_transmit_receive");
+        #endif
+        }else{
+            char id[15];
+            sprintf(id, "%02x%02x", recive_buff1[0], recive_buff1[1]);
+            ESP_LOGI("TAG_SVM30", "SHTC1 id :  %s",(char *)id);
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    return err;
+}
+
+const char * GetDriverVersion() {
+    return (SVM30_VERSION);
+}
+
+void read_featureSet(){
+        esp_err_t err=ESP_FAIL;
+       // SGP30 has 3 words, SHTC1 has 1 word
+        uint8_t send_buff[2] = {(SGP30_Get_Feature_Set >> 8) & 0xFF, SGP30_Get_Feature_Set & 0xFF};
+        uint8_t recive_buff[2]={0};
+        err=SVM30_transmit_receive(svm30_handle, &send_buff,sizeof(send_buff),&recive_buff,2,10);
+        if (err != ESP_OK) {
+            ESP_LOGE("TAG_SVM30", "I2C receive failed: %s", esp_err_to_name(err));
+        }else{
+            ESP_LOGI("TAG_SVM30", "SGP30 product type : %02x ",(recive_buff[0] & 0xf0));
+            ESP_LOGI("TAG_SVM30", "Product version : %02x ",(recive_buff[1]));
+        }
+}
+
 void app_main(void)
 {
     uint16_t i = 0;
@@ -550,13 +652,18 @@ void app_main(void)
 
     /* Initialize I2C */
     i2c_init(); 
-
-        /* Busy loop for initialization. The main loop does not work without
-     * a sensor. */
-    while (svm_probe() != ESP_OK) {
-        printf("SVM30 module probing failed\n");
-    }
+    vTaskDelay(pdTICKS_TO_MS(10));  // SVM30 / SGP30        sensirion_sleep_usec(1000000); == 1s
+    printf("i2c_init\n");
+    ESP_LOGI("TAG_SVM30","Driver version :%s ",GetDriverVersion());
+      // try to detect SVM30 sensors
+    while (probe1() !=ESP_OK){
+         ESP_LOGI("TAG_SVM30","could not detect SVM30 sensors");
+         vTaskDelay(pdMS_TO_TICKS(10));
+    } 
+    ESP_LOGI("TAG_SVM30","SVM30 detected");
+    read_featureSet();
     printf("SVM30 module probing successful\n");
+    
     /* Consider the two cases (A) and (B):
      * (A) If no baseline is available or the most recent baseline is more than
      *     one week old, it must discarded. A new baseline is found with
@@ -586,12 +693,13 @@ void app_main(void)
             if (err == ESP_OK) {
                 /* IMPLEMENT: store baseline to presistent storage */
            }
+           i=0;
         }
-
+                                                              
         /* The IAQ measurement must be triggered exactly once per second (SGP30)
          * to get accurate values.
          */
-        vTaskDelay(pdTICKS_TO_MS(1000));  // SVM30 / SGP30        sensirion_sleep_usec(1000000); == 1s
+        vTaskDelay(pdTICKS_TO_MS(10));  // SVM30 / SGP30        sensirion_sleep_usec(1000000); == 1s
 
     }
 }

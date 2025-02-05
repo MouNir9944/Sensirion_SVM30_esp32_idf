@@ -4,6 +4,6 @@
 
 method=source_dir
 command=
-source_dir=C:/Users/SINT190/esp/v5.3.2/esp-idf/components/bootloader/subproject
+source_dir=C:/Users/MSI/esp/v5.2.2/esp-idf/components/bootloader/subproject
 work_dir=
 
