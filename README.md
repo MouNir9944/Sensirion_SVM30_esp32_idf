@@ -85,8 +85,8 @@ Observe Output
 After flashing, the ESP32 will initialize the sensor and start printing measurements:
 
 I (324) example: SVM30 Initialized successfully
-I (334) example: VOC Index: 145 ppm, CO2_eq Index: 23 ppm
-I (4334) example: T Index: 152 °C, H Index: 25 %
+I (334) example: VOC Index: 145 ppm, CO2_eq Index: 400 ppm
+I (4334) example: T Index: 15.2 °C, H Index: 25.2 %
 ...
 Configuration Options
 
@@ -140,7 +140,7 @@ Ensure SEL pin is grounded for I2C mode
 
 | SVM30 Pin | ESP32 Pin  | Description             |
 | --------- | ---------- | ----------------------- |
-| **VCC**   | **3.3V**   | Power supply (3.3V)     |
+| **VCC**   | **VIN**   | Power supply (5V)     |
 | **GND**   | **GND**    | Ground                  |
 | **SDA**   | **GPIO21** | I2C Data                |
 | **SCL**   | **GPIO22** | I2C Clock               |
@@ -195,8 +195,8 @@ After flashing, the ESP32 will initialize the sensor and start printing measurem
 
 ```plaintext
 I (324) example: SVM30 Initialized successfully
-I (334) example: VOC Index: 145 ppm, CO2_eq Index: 23 ppm
-I (4334) example: T Index: 152 °C, H Index: 25 %
+I (334) example: VOC Index: 145 ppm, CO2_eq Index: 400 ppm
+I (4334) example: T Index: 15.2 °C, H Index: 25.2 %
 ...
 ```
 
