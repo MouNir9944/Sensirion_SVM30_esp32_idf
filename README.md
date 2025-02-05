@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Sensirion SVM30 Air Quality Sensor Example for ESP-IDF
 
 This example demonstrates how to use the **Sensirion SVM30** air quality sensor with **Espressif ESP32 series** chips using **ESP-IDF**. The **SVM30** provides measurements of **Volatile Organic Compounds (VOC), Nitrogen Oxides (NOx), and ambient temperature/humidity** (if supported by hardware). This project initializes the sensor, reads data periodically, and outputs it via UART.
@@ -119,7 +118,6 @@ Ensure SEL pin is grounded for I2C mode
 
 > **Note:** This example is primarily tested on **ESP32**. Other targets may require hardware configuration adjustments.
 
-<<<<<<< HEAD
 ---
 
 ## Features
